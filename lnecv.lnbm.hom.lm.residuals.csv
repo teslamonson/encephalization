@@ -1,0 +1,17 @@
+Species,Species.abbr,Age.Ma.avg,Residuals,ExtantOrFossil,EncephalizationGroup
+Australopithecus afarensis,Au. afarensis,3.09,-0.34537379,Fossil,Derived
+Australopithecus africanus,Au. africanus,2.8,0.01100432,Fossil,Derived
+Australopithecus boisei,Au. boisei,1.65,-0.06937808,Fossil,Derived
+Australopithecus aethiopicus,Au. aethiopicus,2.09,-0.07837378,Fossil,Derived
+Australopithecus robustus,Au. robustus,1.5,0.09290917,Fossil,Derived
+Australopithecus sediba,Au. sediba,1.98,0.13055388,Fossil,Derived
+Homo erectus,H. erectus,0.81,0.05990239,Fossil,Derived
+Homo ergaster,H. ergaster,1.74,-0.23432892,Fossil,Derived
+Homo floresiensis,H. floresiensis,0.08,0.06254008,Fossil,Derived
+Homo habilis,H. habilis,1.76,0.10159537,Fossil,Derived
+Homo heidelbergensis,H. heidelbergensis,0.27,-0.06299845,Fossil,Derived
+Homo naledi,H. naledi,0.288,-0.14770808,Fossil,Derived
+Homo neanderthalensis,H. neanderthalensis,0.08,0.07135176,Fossil,Derived
+Homo rudolfensis,H. rudolfensis,1.87,0.02687535,Fossil,Derived
+Homo sapiens,H. sapiens,0.001,0.25838244,Fossil,Derived
+Homo sapiens (fossil),H. sapiens (fossil),0.01,0.12304638,Fossil,Derived

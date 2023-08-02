@@ -1,0 +1,364 @@
+---
+title: "Monson, Weitz, and Brasil (in review, Nature, 2023) - The evolution of human encephalization"
+author: "Andrew Weitz"
+date: "2023-08-02"
+output: html_document
+---
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+This R Markdown reproduces the statistical results and figures for Monson, Weitz, and Brasil (in review, *Nature*, 2023) - The evolution of human encephalization.
+
+The first step is to load "Powell et al 2017 raw data plus hominid ages.csv": the the extant primate endocranial volume and body mass data provided in Powell, Isler, & Barton (2017), to which we appended values of endocranial volume, body mass, and average geologic age from the literature for fossil hominids and extant humans.
+
+```{r}
+# clear environment
+rm(list=ls())
+
+# load required packages
+library(ggplot2)
+library(dplyr)
+
+# read in "Powell et al 2017 raw data plus hominid ages.csv" using your system's filepath
+dat <- read.csv("/Users/apweitz/Documents/OneDrive - Western Washington University/Documents/WWU/Research/2023 Hominid Encephalization/rawdata/Powell et al 2017 raw data plus hominid ages.csv")
+
+# Select only the columns for analysis, and calculate natural log values for endocranial volume and body mass
+dat.c <- dat %>%
+  select(Species,Species.abbr,Age.Ma.avg,Family,ExtantOrFossil,EncephalizationGroup,ECV,BodyMass) %>%
+  mutate(lnEndocranialVolume.cm3 = log(ECV),
+         lnBodyMass.g = log(BodyMass))
+
+# Make a separate dataframe that includes the new natural log columns, separates out values for extant primates (including humans), and filters out all rows with missing data
+dat.anc <- dat.c %>%
+  select(Species,Species.abbr,Age.Ma.avg,Family,ExtantOrFossil,EncephalizationGroup,ECV,BodyMass,lnEndocranialVolume.cm3,lnBodyMass.g) %>% 
+  filter(ExtantOrFossil == "Extant") %>% 
+  filter(!is.na(lnBodyMass.g)) %>% 
+  filter(!is.na(lnEndocranialVolume.cm3)) 
+```
+
+Using dat.anc, we can plot the raw and natural log-transformed relationships between endocranial volume and body mass in extant primates. These plots demonstrate how far modern humans fall off the allometric regressions in primates. 
+
+```{r}
+# there are 20 families, so set shapes for them manually
+shapes <- c(0,1,2,3,4,5,6,7,8,9,10,0,1,2,3,4,5,6,7,8)
+
+ggplot(dat.anc, aes(BodyMass, ECV, shape = Family, color = Family, group = NA)) +
+  geom_point(size = 4) +
+  stat_smooth(data = subset(dat.anc, Species != "Homo sapiens"),
+              method = lm, formula = y ~ poly(x,2), 
+              alpha = 0.5, show.legend = F, 
+              color = "black", lwd = 0.4) +  # Fit the polynomial model, excluding humans
+  annotate('text', x = 57800, y = 1300, label = "H. sapiens", fontface = 'italic', size = 3) +
+  scale_shape_manual(values=shapes) +
+  labs(x = "Body mass (g)", y = expression(paste("Endocranial volume ", (cm^{3})))) +
+  theme_classic() +
+  theme(legend.position = "bottom")
+
+ggplot(dat.anc, aes(lnBodyMass.g, lnEndocranialVolume.cm3, shape = Family, color = Family, group = NA)) +
+  geom_point(size = 4) +
+  stat_smooth(data = subset(dat.anc, Species != "Homo sapiens"),
+              method = lm, formula = y ~ x, 
+              alpha = 0.5, show.legend = F, 
+              color = "black", lwd = 0.4) +  # Fit the polynomial model, excluding humans
+  annotate('text', x = 10.964744, y = 7, label = "H. sapiens", fontface = 'italic', size = 3) +
+  scale_shape_manual(values=shapes) +
+  labs(x = "ln Body mass (g)", y = expression(paste("ln Endocranial volume ", (cm^{3})))) +
+  theme_classic() +
+  theme(legend.position = "bottom")
+```
+
+These plots allow for comparisons of fossil hominids to these primate scaling relationships. To do this, we need to make a new dataframe that has the ancestral (extant primate) values but with *Ar. ramidus* and *Au. anamensis* removed, so that it doesn't change the original ancestral regression slopes shown above. Then we can plot both the ancestral regressions along with the derived (fossil hominid) regressions.
+
+```{r}
+# Make a new ancestral dataframe and remove missing values
+dat.anc.nohom <- dat.c %>%
+  filter(EncephalizationGroup == "Ancestral") %>%
+  filter(Species.abbr != "Ar. ramidus", 
+         Species.abbr != "Au. anamensis") %>%
+  filter(!is.na(lnBodyMass.g)) %>% 
+  filter(!is.na(lnEndocranialVolume.cm3)) 
+
+ggplot(dat.c, aes(BodyMass, ECV, group = EncephalizationGroup, color = Family, shape = Family)) +
+  geom_point(size = 4) +
+  stat_smooth(data = dat.anc.nohom,
+              method = lm, formula = y ~ poly(x,2), 
+              alpha = 0.5, show.legend = F, color = "black", lwd = 0.4) +
+  stat_smooth(data = subset(dat.c, EncephalizationGroup == "Derived"),
+              method = lm, formula = y ~ x,
+              alpha = 0.5, show.legend = F, color = "black", lwd = 0.4) +
+  labs(x = "Body mass (g)", y = expression(paste("Endocranial volume ", (cm^{3})))) +
+  scale_shape_manual(values=shapes) +
+  theme_classic() +
+  theme(legend.position = "bottom")
+
+ggplot(dat.c, aes(lnBodyMass.g, lnEndocranialVolume.cm3, group = EncephalizationGroup, color = Family, shape = Family)) +
+  geom_point(size = 4) +
+  stat_smooth(data = dat.anc.nohom,
+              method = lm, formula = y ~ x, 
+              alpha = 0.5, show.legend = F, color = "black", lwd = 0.4) +
+  stat_smooth(data = subset(dat.c, EncephalizationGroup == "Derived"),
+              method = lm, formula = y ~ x,
+              alpha = 0.5, show.legend = F, color = "black", lwd = 0.4) +
+  labs(x = "ln Body mass (g)", y = expression(paste("ln Endocranial volume ", (cm^{3})))) +
+  scale_shape_manual(values=shapes) +
+  theme_classic() +
+  theme(legend.position = "bottom")
+```
+
+Now we can look closer at the difference between the derived and ancestral slopes as well as plot the names of each hominid taxon using the ggrepel package:
+
+```{r}
+library(ggrepel)
+
+ggplot(dat.c, aes(lnBodyMass.g, lnEndocranialVolume.cm3, group = EncephalizationGroup, color = Family, shape = Family)) +
+  stat_smooth(data = dat.anc.nohom,
+              method = lm, formula = y ~ x, 
+              alpha = 0.05, show.legend = F, color = "black", lwd = 0.2) +
+  stat_smooth(data = subset(dat.c, EncephalizationGroup == "Derived"),
+              method = lm, formula = y ~ x,
+              alpha = 0.05, show.legend = F, color = "black", lwd = 0.2) +
+  labs(x = "ln Body mass (g)", y = expression(paste("ln Endocranial volume ", (cm^{3})))) +
+  geom_text_repel(aes(label = Species.abbr), 
+                  fontface = "bold.italic",
+                  size = 3,
+                  box.padding = .5, 
+                  segment.size = 0.3) +
+  geom_point(size = 4) +
+  scale_shape_manual(values=shapes) +
+  theme_classic() +
+  theme(legend.position = "NA") +
+  coord_cartesian(xlim = c(10,11.5), ylim=c(5.5,7.5))
+```
+
+With the allometry plots complete, we can plot the values of hominid endocranial volume as a function of their average geologic age:
+
+```{r}
+# Make a new dataframe that just includes the hominids
+hominids <- dat.c %>%
+  filter(Family == "Hominidae")
+
+# There are 19 values so set shapes manually
+homshapes <- c(0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8)
+
+ggplot(hominids, aes(Age.Ma.avg, ECV, shape = Species.abbr, color = Species.abbr)) +
+  geom_text_repel(aes(label = Species.abbr), 
+                      fontface = "italic",
+                      size = 3,
+                      box.padding = .7, 
+                      segment.size = 0.1) +
+  geom_point(size = 5) +
+  labs(x = "Age (Ma)", y = expression(paste("Endocranial volume ", (cm^{3})))) +
+  scale_x_reverse() +
+  scale_shape_manual(values=homshapes) +
+  theme_classic() +
+  theme(legend.position = "NA",
+        legend.text = element_text(face = "italic"))
+```
+
+These are the main figures, so now we can move on to the stats for all models (linear models first, then PGLS model)
+
+Going in order from above, we can start with the polynomial fit of ECV~BM in primates (excluding humans):
+
+```{r}
+ecv.bm.lm <- lm(ECV ~ poly(BodyMass, 2), data = subset(dat.anc, Species != "Homo sapiens"))
+
+summary(ecv.bm.lm)
+
+# Check residuals to confirm model is a good fit of the data:
+plot(fitted(ecv.bm.lm),residuals(ecv.bm.lm), 
+     xlab = "fitted values",
+     ylab = "residuals", 
+     main = "ECV ~ BM (primates)")
+```
+
+Now for the linear fit of ln ECV ~ ln BM in primates (excluding humans):
+
+```{r}
+lnecv.lnbm.lm <- lm(lnEndocranialVolume.cm3 ~ lnBodyMass.g, data = subset(dat.anc, Species != "Homo sapiens"))
+
+summary(lnecv.lnbm.lm)
+
+# Check residuals to confirm model is a good fit of the data:
+plot(fitted(lnecv.lnbm.lm),residuals(lnecv.lnbm.lm), 
+     xlab = "fitted values",
+     ylab = "residuals", 
+     main = "ln ECV ~ ln BM (primates)")
+
+# What about when we include humans in this stat
+summary(lm(lnEndocranialVolume.cm3 ~ lnBodyMass.g, data = dat.anc)) # same slope of 0.8
+```
+
+Now for the linear fit of ECV ~ BM in hominids:
+
+```{r}
+ecv.bm.hom.lm <- lm(ECV ~ BodyMass,
+                    data = subset(dat.c, EncephalizationGroup == "Derived"))
+
+summary(ecv.bm.hom.lm)
+
+# Check residuals to confirm model is a good fit of the data:
+plot(fitted(ecv.bm.hom.lm),residuals(ecv.bm.hom.lm), 
+     xlab = "fitted values",
+     ylab = "residuals", 
+     main = "ECV ~ BM (hominids)")
+```
+
+Now for the linear fit of ln ECV ~ ln BM in hominids:
+
+```{r}
+lnecv.lnbm.hom.lm <- lm(lnEndocranialVolume.cm3 ~ lnBodyMass.g, 
+                        data = subset(dat.c, EncephalizationGroup == "Derived"))
+
+summary(lnecv.lnbm.hom.lm)
+
+# Check residuals to confirm model is a good fit of the data:
+plot(fitted(lnecv.lnbm.hom.lm),residuals(lnecv.lnbm.hom.lm), 
+     xlab = "fitted values",
+     ylab = "residuals", 
+     main = "ln ECV ~ ln BM (hominids)")
+```
+
+Now we can get the residuals of this last model to compare to each taxon's age to test if "EQ" in hominids has increased over time.
+
+```{r}
+# Create new dataframe with the residuals from model lnecv.lnbm.hom.lm
+res <- as.data.frame(residuals(lnecv.lnbm.hom.lm)) # saved these values and entered them into lnecv.lnbm.hom.lm.residuals.csv
+
+# load lnecv.lnbm.hom.lm.residuals.csv using your system's filepath
+res.c <- read.csv("/Users/apweitz/Documents/OneDrive - Western Washington University/Documents/WWU/Research/2023 Hominid Encephalization/rawdata/lnecv.lnbm.hom.lm.residuals.csv")
+
+ggplot(res.c, aes(Age.Ma.avg,Residuals, color = Species.abbr, shape = Species.abbr)) +
+  geom_point(size = 4) +
+  labs(x = "Age (Ma)", y = "Residuals") + 
+  scale_x_reverse() +
+  scale_shape_manual(values=homshapes) +
+  theme_classic() +
+  theme(legend.position = "right",
+        legend.text = element_text(face = "italic")) +
+  guides(shape=guide_legend(title="Taxon"),
+         color=guide_legend(title="Taxon"))
+
+# Test for a significant relationship between hominid "EQ" via residuals over evolutionary time
+summary(lm(Residuals ~ Age.Ma.avg, data = res.c)) # not significant - "EQ" does not increase over time
+```
+
+Now we can test for the effect of the average geologic age of each hominid taxon as an interacting factor of the main relationship of ln ECV and ln BM using the car package:
+
+```{r}
+library(car)
+ln.age.hom.lm <- glm(lnEndocranialVolume.cm3 ~ lnBodyMass.g:Age.Ma.avg, 
+                     data = subset(dat.c, EncephalizationGroup == "Derived"))
+
+summary(ln.age.hom.lm)
+Anova(ln.age.hom.lm, type = "II")
+
+# Check residuals to confirm model is a good fit of the data:
+plot(fitted(ln.age.hom.lm),residuals(ln.age.hom.lm), 
+     xlab = "fitted values",
+     ylab = "residuals", 
+     main = "ln ECV ~ ln BM:Age (hominids)")
+
+# But what does this look like? Let's size points based on Age to see this:
+
+# First make a new dataframe of the derived hominid values that excludes *Au. garhi* because it does not have a value for body mass
+derhominids <- hominids %>%
+  filter(EncephalizationGroup == "Derived") %>%
+  filter(Species.abbr != "Au. garhi")
+
+ggplot(derhominids, 
+       aes(lnBodyMass.g, lnEndocranialVolume.cm3, 
+           shape = Species.abbr, color = Species.abbr, size = Age.Ma.avg, group = NA)) +
+  stat_smooth(method = lm, formula = y ~ x,
+              alpha = 0.05, show.legend = F, color = "black", lwd = 0.1) +
+  geom_point() +
+  labs(x = "ln Body mass (g)", y = expression(paste("ln Endocranial volume ", (cm^{3})))) +
+  scale_shape_manual(values = homshapes) +
+  theme_classic() +
+  theme(legend.position = "right",
+        legend.text = element_text(face = "italic")) +
+  guides(shape=guide_legend(title="Taxon"),
+         color=guide_legend(title="Taxon"), 
+         size=guide_legend(title="Age (Ma)"))
+```
+
+Lastly, we can compare the slopes between derived and ancestral groups using the car package again:
+
+```{r}
+library(car)
+
+# Need to remove *Ar. ramidus* and *Au. anamensis* again so that they aren't lumped in with primate ancestral group
+dat.c.noardianam <- dat.c %>%
+  filter(Species.abbr != "Ar. ramidus",
+         Species.abbr != "Au. anamensis")
+
+slopes.lm <- lm(lnEndocranialVolume.cm3 ~ lnBodyMass.g*EncephalizationGroup, data = dat.c.noardianam)
+
+summary(slopes.lm)
+Anova(slopes.lm, type = "II")
+
+# Check residuals to confirm model is a good fit of the data:
+plot(fitted(slopes.lm),residuals(slopes.lm), 
+     xlab = "fitted values",
+     ylab = "residuals", 
+     main = "ln ECV ~ ln BM (ancestral vs. derived)")
+```
+
+With these done, we can conclude with the PGLS analysis:
+
+```{r}
+# Clear working directory again and load new packages for PGLS
+rm(list=ls())
+
+library(ape)
+library(caper)
+library(dplyr)
+
+# Load in Powell et al 2017 raw data plus hominid ages.csv as dat like we did above using your system's filepath
+dat <- read.csv("/Users/apweitz/Documents/OneDrive - Western Washington University/Documents/WWU/Research/2023 Hominid Encephalization/rawdata/Powell et al 2017 raw data plus hominid ages.csv") # main data
+
+
+# Like above, select main columns of interest and remove missing values
+dat.c <- dat %>%
+  dplyr::select(Species,Family,ExtantOrFossil,EncephalizationGroup,ECV,BodyMass) %>%
+  dplyr::mutate(lnEndocranialVolume.cm3 = log(ECV),
+                lnBodyMass.g = log(BodyMass)) %>%
+  dplyr::filter(!is.na(lnBodyMass.g)) %>% # Filter out NA's
+  dplyr::filter(!is.na(lnEndocranialVolume.cm3)) # Filter out NA's
+
+# Import nexus file from Faurby & Svenning (2015) using your system's filepath via https://www.sciencedirect.com/science/article/abs/pii/S1055790314003844 or https://doi.org/10.1016/j.ympev.2014.11.001
+# replace underscores with spaces, and select first consensus tree 
+tree1<-read.tree("/Users/apweitz/Documents/OneDrive - Western Washington University/Documents/WWU/Research/2023 Hominid Encephalization/largedata/Small_phylogeny_4125 species.nex")
+tree1[[1]]$tip.label <- sub("_", " ", tree1[[1]]$tip.label)
+tree.c <- tree1[[1]] 
+
+# Make a new dataframe of just the extant species from dat to merge with this phylogeny:
+prims <- dat.c %>%
+  filter(ExtantOrFossil == "Extant")
+
+# Drop tips that aren't in our dataset and plot the tree to confirm that majority of taxa are represented:
+tree.d <- drop.tip(tree1[[1]], setdiff(tree1[[1]]$tip.label, prims$Species))
+
+summary(tree.d$tip.label)
+summary(prims$Species)
+
+# This matched the tip labels of 205 out of the 225 possible species from the Powell, Isler, & Barton (2017) data we've been using. Plot the tree to confirm:
+plot(tree.d)
+
+# Merge phylogeny with prims:
+primate.ecv.bm <- comparative.data(tree.d, prims, Species)
+
+# Quick visualization of the relationship we're testing via PGLS:
+ggplot(prims, aes(lnBodyMass.g, lnEndocranialVolume.cm3)) +
+  geom_point() +
+  theme_classic() # looks good
+
+# PGLS model
+ecv.bm.ln <- pgls(lnEndocranialVolume.cm3 ~ lnBodyMass.g, data = primate.ecv.bm, lambda = 'ML', kappa = 'ML', delta = 'ML')
+summary(ecv.bm.ln) # highly significant, R2 = 0.75
+anova(ecv.bm.ln) 
+
+# Check residuals to confirm model is a good fit of the data:
+par(mfrow=c(2,2))
+plot(ecv.bm.ln)
+```
